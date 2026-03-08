@@ -1,0 +1,112 @@
+Total CSV files found: 92
+Categories found: ['Cancer_Anadata', 'Cancer_Lab', 'Cancer_Recete', 'Check_Up_Anadata', 'Check_Up_Lab', 'Check_Up_Recete', 'Ex_Anadata', 'Ex_Lab', 'Ex_Recete']
+
+============================================================
+Category: Cancer_Anadata (Total files: 1)
+Sample File: ca_anadata_0001.csv
+Error reading c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/raw/ACUHIT 2\Cancer - Data\Cancer_Anadata\ca_anadata_0001.csv: 'charmap' codec can't encode character '\u015f' in position 318: character maps to <undefined>
+
+
+============================================================
+Category: Cancer_Lab (Total files: 4)
+Sample File: ca_lab_0001.csv
+Columns: ['HASTA_ID', 'SUB_CODE', 'RESULT', 'UNIT', 'REFMIN', 'REFMAX', 'REP_DATE']
+Shape of sample read: (1000, 7)
+Data Types:
+  HASTA_ID: object
+  SUB_CODE: object
+  RESULT: object
+  UNIT: object
+  REFMIN: float64
+  REFMAX: object
+  REP_DATE: object
+Null Content (%):
+  RESULT: 0.2%
+  UNIT: 25.6%
+  REFMIN: 5.2%
+  REFMAX: 4.0%
+
+Head (2 rows):
+Error reading c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/raw/ACUHIT 2\Cancer - Data\Cancer_Lab\ca_lab_0001.csv: 'charmap' codec can't encode character '\u0130' in position 169: character maps to <undefined>
+
+
+============================================================
+Category: Cancer_Recete (Total files: 1)
+Sample File: ca_recete_0001.csv
+Error reading c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/raw/ACUHIT 2\Cancer - Data\Cancer_Recete\ca_recete_0001.csv: 'charmap' codec can't encode character '\u0130' in position 78: character maps to <undefined>
+
+
+============================================================
+Category: Check_Up_Anadata (Total files: 6)
+Sample File: Anadata_0001.csv
+Error reading c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/raw/ACUHIT 2\Check-Up - Data\Check_Up_Anadata\Anadata_0001.csv: 'charmap' codec can't encode character '\u015f' in position 334: character maps to <undefined>
+
+
+============================================================
+Category: Check_Up_Lab (Total files: 72)
+Sample File: lab_0001.csv
+Columns: ['HASTA_ID', 'SUB_CODE', 'RESULT', 'UNIT', 'REFMIN', 'REFMAX', 'REP_DATE']
+Shape of sample read: (1000, 7)
+Data Types:
+  HASTA_ID: object
+  SUB_CODE: object
+  RESULT: object
+  UNIT: object
+  REFMIN: object
+  REFMAX: object
+  REP_DATE: object
+Null Content (%):
+  RESULT: 3.3%
+  UNIT: 13.3%
+  REFMIN: 18.7%
+  REFMAX: 15.8%
+
+Head (2 rows):
+Error reading c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/raw/ACUHIT 2\Check-Up - Data\Check_Up_Lab\lab_0001.csv: 'charmap' codec can't encode character '\u0131' in position 115: character maps to <undefined>
+
+
+============================================================
+Category: Check_Up_Recete (Total files: 4)
+Sample File: prescriptions_0001.csv
+Error reading c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/raw/ACUHIT 2\Check-Up - Data\Check_Up_Recete\prescriptions_0001.csv: 'charmap' codec can't encode character '\u0130' in position 78: character maps to <undefined>
+
+
+============================================================
+Category: Ex_Anadata (Total files: 1)
+Sample File: ex_anadata_0001.csv
+Error reading c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/raw/ACUHIT 2\Ex - Data\Ex_Anadata\ex_anadata_0001.csv: 'charmap' codec can't encode character '\u015f' in position 318: character maps to <undefined>
+
+
+============================================================
+Category: Ex_Lab (Total files: 2)
+Sample File: ex_lab_0001.csv
+Columns: ['HASTA_ID', 'SUB_CODE', 'RESULT', 'UNIT', 'REFMIN', 'REFMAX', 'REP_DATE']
+Shape of sample read: (1000, 7)
+Data Types:
+  HASTA_ID: object
+  SUB_CODE: object
+  RESULT: object
+  UNIT: object
+  REFMIN: float64
+  REFMAX: object
+  REP_DATE: object
+Null Content (%):
+  SUB_CODE: 0.1%
+  RESULT: 0.1%
+  UNIT: 13.5%
+  REFMIN: 17.9%
+  REFMAX: 12.8%
+  REP_DATE: 0.1%
+
+Head (2 rows):
+      HASTA_ID                      SUB_CODE RESULT    UNIT  REFMIN REFMAX             REP_DATE
+0  ANON_245879  Tiroid Stimülan Hormon (TSH)   3.01  uIU/mL    0.55   4.78  2017-02-27 10:55:15
+1  ANON_245879                    Hematokrit   36.5       %   35.50   44.2  2017-02-27 10:55:15
+
+
+============================================================
+Category: Ex_Recete (Total files: 1)
+Sample File: ex_recete_0001.csv
+Error reading c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/raw/ACUHIT 2\Ex - Data\Ex_Recete\ex_recete_0001.csv: 'charmap' codec can't encode character '\u0130' in position 78: character maps to <undefined>
+
+
