@@ -1,9 +1,9 @@
 """
-Phase 5c: Target Engineering + Train/Test Split
+phase 5c: target engineering + train/test split
 ------------------------------------------------
-100% LazyFrame approach to avoid Segmentation Faults.
-Uses streaming collect for the final output.
-Engineers: mortality_label, LOS_proxy (composite), early_return.
+100% lazyframe approach to avoid segmentation faults.
+uses streaming collect for the final output.
+engineers: mortality_label, los_proxy (composite), early_return.
 """
 import polars as pl
 import numpy as np
@@ -11,12 +11,12 @@ import os
 import time
 import json
 
-OUT_DIR = r"c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/processed"
+OUT_DIR = r"./data/processed"
 
 def run():
     t_start = time.time()
     
-    # 1. Load Deceased IDs (Proxy from Ex_Anadata raw files)
+    # 1. load deceased ids (proxy from ex_demographics_data raw files)
     print("=== Step 0: Loading mortality proxies ===")
     deceased_path = '/tmp/deceased_ids.json'
     deceased_ids = []
@@ -25,92 +25,86 @@ def run():
             deceased_ids = json.load(f)
     print(f"  Loaded {len(deceased_ids)} deceased patient IDs from proxy.")
 
-    # =========================================================================
-    # STEP 1: Process Phase 2 for early_return and mortality dates
-    # =========================================================================
+    # step 1: process phase 2 for early_return and mortality dates
     print("=== Step 1: Building temporal targets (window functions) ===")
     
-    # Lazy scan of Phase 2
+    # lazy scan of phase 2
     lf_dates = pl.scan_parquet(
-        os.path.join(OUT_DIR, "phase2_anadata.parquet"),
+        os.path.join(OUT_DIR, "phase2_demographics_data.parquet"),
         low_memory=True
-    ).select(["SQ_EPISODE", "HASTA_ID", "EPISODE_TARIH", "TOPLAM_GELIS_SAYISI", "TUM_EPS_TANILAR"]).with_columns([
-        pl.col("SQ_EPISODE").cast(pl.Utf8),
-        pl.col("HASTA_ID").cast(pl.Utf8),
-        pl.col("EPISODE_TARIH").cast(pl.Utf8).str.to_datetime(strict=False),
+    ).select(["ENCOUNTER_ID", "PATIENT_ID", "ENCOUNTER_DATE", "TOTAL_VISIT_COUNT", "ALL_DIAGNOSES"]).with_columns([
+        pl.col("ENCOUNTER_ID").cast(pl.Utf8),
+        pl.col("PATIENT_ID").cast(pl.Utf8),
+        pl.col("ENCOUNTER_DATE").cast(pl.Utf8).str.to_datetime(strict=False),
     ]).filter(
-        pl.col("EPISODE_TARIH").is_not_null() 
-        & (~pl.col("HASTA_ID").is_in(["nan", "NaN", "None", ""]))
-    ).sort(["HASTA_ID", "EPISODE_TARIH"])
+        pl.col("ENCOUNTER_DATE").is_not_null() 
+        & (~pl.col("PATIENT_ID").is_in(["nan", "NaN", "None", ""]))
+    ).sort(["PATIENT_ID", "ENCOUNTER_DATE"])
     
-    # Compute early_return
+    # compute early_return
     lf_dates = lf_dates.with_columns([
-        pl.col("EPISODE_TARIH").shift(-1).over("HASTA_ID").alias("next_visit_date")
+        pl.col("ENCOUNTER_DATE").shift(-1).over("PATIENT_ID").alias("next_visit_date")
     ]).with_columns([
-        ((pl.col("next_visit_date") - pl.col("EPISODE_TARIH")).dt.total_days() <= 30).fill_null(False).cast(pl.Int8).alias("early_return")
+        ((pl.col("next_visit_date") - pl.col("ENCOUNTER_DATE")).dt.total_days() <= 30).fill_null(False).cast(pl.Int8).alias("early_return")
     ])
 
-    # Compute Days_To_Death proxy
-    # For deceased IDs, find max(EPISODE_TARIH)
-    lf_deceased_dates = lf_dates.filter(pl.col("HASTA_ID").is_in(deceased_ids)).group_by("HASTA_ID").agg(
-        pl.col("EPISODE_TARIH").max().alias("death_date_proxy")
+    # compute days_to_death proxy
+    # for deceased ids, find max(encounter_date)
+    lf_deceased_dates = lf_dates.filter(pl.col("PATIENT_ID").is_in(deceased_ids)).group_by("PATIENT_ID").agg(
+        pl.col("ENCOUNTER_DATE").max().alias("death_date_proxy")
     )
     
-    lf_dates = lf_dates.join(lf_deceased_dates, on="HASTA_ID", how="left").with_columns([
-        (pl.col("death_date_proxy") - pl.col("EPISODE_TARIH")).dt.total_days().alias("Days_To_Death")
+    lf_dates = lf_dates.join(lf_deceased_dates, on="PATIENT_ID", how="left").with_columns([
+        (pl.col("death_date_proxy") - pl.col("ENCOUNTER_DATE")).dt.total_days().alias("Days_To_Death")
     ])
 
-    # Terminal ICD-10 codes regex (to augment mortality_label)
+    # terminal icd-10 codes regex (to augment mortality_label)
     terminal_regex = r"(Z51\.5|Z76\.0|I46|R99|J96\.9)"
     
-    # Finalize Target Engineering in Step 1
+    # finalize target engineering in step 1
     lf_targets = lf_dates.with_columns([
-        # mortality_label: 1 if in deceased_ids OR contains terminal diagnosis
-        pl.when(pl.col("HASTA_ID").is_in(deceased_ids) | pl.col("TUM_EPS_TANILAR").fill_null("").str.contains(terminal_regex))
+        # mortality_label: 1 if in deceased_ids or contains terminal diagnosis
+        pl.when(pl.col("PATIENT_ID").is_in(deceased_ids) | pl.col("ALL_DIAGNOSES").fill_null("").str.contains(terminal_regex))
         .then(1).otherwise(0).cast(pl.Int8).alias("mortality_label")
     ]).with_columns([
-        # LOS_proxy: Composite
+        # los_proxy: composite
         pl.when(pl.col("mortality_label") == 1).then(
             pl.when(pl.col("Days_To_Death") <= 30).then(pl.lit("Short (<30 days till death)"))
             .when(pl.col("Days_To_Death") <= 180).then(pl.lit("Medium (1-6 months till death)"))
             .otherwise(pl.lit("Long (>6 months till death)"))
         ).otherwise(
-            pl.when(pl.col("TOPLAM_GELIS_SAYISI").cast(pl.Int64) <= 3).then(pl.lit("Short (1-3 visits)"))
-            .when(pl.col("TOPLAM_GELIS_SAYISI").cast(pl.Int64) <= 10).then(pl.lit("Medium (4-10 visits)"))
+            pl.when(pl.col("TOTAL_VISIT_COUNT").cast(pl.Int64) <= 3).then(pl.lit("Short (1-3 visits)"))
+            .when(pl.col("TOTAL_VISIT_COUNT").cast(pl.Int64) <= 10).then(pl.lit("Medium (4-10 visits)"))
             .otherwise(pl.lit("Long (11+ visits)"))
         ).alias("LOS_proxy")
-    ]).select(["SQ_EPISODE", "early_return", "mortality_label", "LOS_proxy"])
+    ]).select(["ENCOUNTER_ID", "early_return", "mortality_label", "LOS_proxy"])
     
-    # =========================================================================
-    # STEP 2: Main Feature Matrix + TF-IDF Join
-    # =========================================================================
+    # step 2: main feature matrix + tf-idf join
     print("\n=== Step 2: Joining Main Matrix + TF-IDF + Targets ===")
     
-    # Main matrix
+    # main matrix
     lf_main = pl.scan_parquet(os.path.join(OUT_DIR, "pipeline_v2_output.parquet"))
     
-    # TF-IDF matrix
+    # tf-idf matrix
     lf_tfidf = pl.scan_parquet(os.path.join(OUT_DIR, "phase5b_tfidf.parquet"))
     
-    # Joint assembly
-    lf_final = lf_main.join(lf_tfidf, on="SQ_EPISODE", how="left").join(lf_targets, on="SQ_EPISODE", how="inner")
+    # joint assembly
+    lf_final = lf_main.join(lf_tfidf, on="ENCOUNTER_ID", how="left").join(lf_targets, on="ENCOUNTER_ID", how="inner")
     
-    # Drop raw string columns to save memory in final file
-    drop_cols = ["TUM_EPS_TANILAR", "Tedavi Notu", "Kontrol Notu", "Özgeçmiş Notu", "Soygeçmiş Notu", "YAKINMA", "ÖYKÜ", "Muayene Notu"]
+    # drop raw string columns to save memory in final file
+    drop_cols = ["ALL_DIAGNOSES", "Treatment_Note", "Followup_Note", "Past_History_Note", "Family_History_Note", "CHIEF_COMPLAINT", "MEDICAL_HISTORY", "Examination_Note"]
     cols_to_drop = [c for c in drop_cols if c in lf_final.columns]
     lf_final = lf_final.drop(cols_to_drop)
 
-    # =========================================================================
-    # STEP 3: Collect and Save
-    # =========================================================================
+    # step 3: collect and save
     print("\n=== Step 3: Executing and saving final_feature_matrix.parquet ===")
     out_path = os.path.join(OUT_DIR, "final_feature_matrix.parquet")
     
-    # Using engine="streaming" as recommended in Polars >= 1.25.0
+    # using engine="streaming" as recommended in polars >= 1.25.0
     df = lf_final.collect(engine="streaming")
     print(f"  Shape: {df.shape[0]:,} rows x {df.shape[1]} cols")
     
-    # --- Compute DHS Using Polars Native (Memory Safe) ---
+    # --- compute dhs using polars native (memory safe) ---
     print("\n  Computing DHS Formula...")
     
     def polars_norm_cap(col_expr):
@@ -123,14 +117,14 @@ def run():
         
     vs_exprs = []
     if "SPO2" in df.columns: vs_exprs.append(polars_norm_cap(100.0 - pl.col("SPO2").cast(pl.Float64)))
-    if "Nabız" in df.columns: vs_exprs.append(polars_norm_cap(pl.col("Nabız").cast(pl.Float64)))
-    if "Ağrı skoru" in df.columns: vs_exprs.append(polars_norm_cap(pl.col("Ağrı skoru").cast(pl.Float64)))
+    if "HEART_RATE" in df.columns: vs_exprs.append(polars_norm_cap(pl.col("HEART_RATE").cast(pl.Float64)))
+    if "PAIN_SCORE" in df.columns: vs_exprs.append(polars_norm_cap(pl.col("PAIN_SCORE").cast(pl.Float64)))
     vital_score = pl.sum_horizontal(vs_exprs) if vs_exprs else pl.lit(0.0)
 
     lab_cols = [pl.col(c).cast(pl.Float64) for c in df.columns if c.startswith("Lab_")]
     lab_score = polars_norm_cap(pl.sum_horizontal(lab_cols)) if lab_cols else pl.lit(0.0)
 
-    comorb_score = polars_norm_cap(pl.col("TOPLAM_GELIS_SAYISI").cast(pl.Float64)) if "TOPLAM_GELIS_SAYISI" in df.columns else pl.lit(0.0)
+    comorb_score = polars_norm_cap(pl.col("TOTAL_VISIT_COUNT").cast(pl.Float64)) if "TOTAL_VISIT_COUNT" in df.columns else pl.lit(0.0)
 
     tfidf_cols = [pl.col(c).cast(pl.Float64) for c in df.columns if c.startswith("TFIDF_")]
     nlp_score = polars_norm_cap(pl.sum_horizontal(tfidf_cols)) if tfidf_cols else pl.lit(0.0)
@@ -149,7 +143,7 @@ def run():
     
     df.write_parquet(out_path)
     
-    # Statistics
+    # statistics
     print("\nTarget Distributions:")
     print("mortality_label:")
     print(df["mortality_label"].value_counts())
@@ -158,9 +152,7 @@ def run():
     print("\nearly_return:")
     print(df["early_return"].value_counts())
     
-    # =========================================================================
-    # STEP 4: 80/20 Stratified Train/Test Split on mortality_label
-    # =========================================================================
+    # step 4: 80/20 stratified train/test split on mortality_label
     print("\n=== Step 4: Stratified Train/Test Split (80/20) ===")
     
     np.random.seed(42)
