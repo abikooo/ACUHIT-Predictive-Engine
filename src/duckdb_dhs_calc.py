@@ -2,7 +2,7 @@ import duckdb
 import os
 
 def run():
-    out_dir = r"c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/processed"
+    out_dir = r"./data/processed"
     f_path = os.path.join(out_dir, "final_feature_matrix.parquet")
     tmp_path = os.path.join(out_dir, "duckdb_dhs_tmp")
     os.makedirs(tmp_path, exist_ok=True)
@@ -29,24 +29,24 @@ def run():
                         ELSE 0.3
                     END +
                     CASE 
-                        WHEN "Nabız_Binned" = 'Normal (60-100)' THEN 0.0
-                        WHEN "Nabız_Binned" = 'Tachycardia (>100)' THEN 0.5
-                        WHEN "Nabız_Binned" = 'Severe_Tachycardia' THEN 1.0  -- Assuming Severe is Tachycardia for this dataset based on bins
-                        WHEN "Nabız_Binned" = 'Bradycardia (<60)' THEN 0.4
+                        WHEN "HEART_RATE_Binned" = 'Normal (60-100)' THEN 0.0
+                        WHEN "HEART_RATE_Binned" = 'Tachycardia (>100)' THEN 0.5
+                        WHEN "HEART_RATE_Binned" = 'Severe_Tachycardia' THEN 1.0  -- Assuming Severe is Tachycardia for this dataset based on bins
+                        WHEN "HEART_RATE_Binned" = 'Bradycardia (<60)' THEN 0.4
                         ELSE 0.3
                     END +
                     CASE 
-                        WHEN "KB-S_Binned" = 'Normal' THEN 0.0
-                        WHEN "KB-S_Binned" = 'Pre-HTN' THEN 0.2
-                        WHEN "KB-S_Binned" = 'HTN' THEN 0.5
-                        WHEN "KB-S_Binned" = 'Crisis' THEN 1.0
+                        WHEN "SYSTOLIC_BP_Binned" = 'Normal' THEN 0.0
+                        WHEN "SYSTOLIC_BP_Binned" = 'Pre-HTN' THEN 0.2
+                        WHEN "SYSTOLIC_BP_Binned" = 'HTN' THEN 0.5
+                        WHEN "SYSTOLIC_BP_Binned" = 'Crisis' THEN 1.0
                         ELSE 0.3
                     END +
                     CASE 
-                        WHEN "KB-D_Binned" = 'Normal' THEN 0.0
-                        WHEN "KB-D_Binned" = 'Pre-HTN' THEN 0.2
-                        WHEN "KB-D_Binned" = 'HTN' THEN 0.5
-                        WHEN "KB-D_Binned" = 'Crisis' THEN 1.0
+                        WHEN "DIASTOLIC_BP_Binned" = 'Normal' THEN 0.0
+                        WHEN "DIASTOLIC_BP_Binned" = 'Pre-HTN' THEN 0.2
+                        WHEN "DIASTOLIC_BP_Binned" = 'HTN' THEN 0.5
+                        WHEN "DIASTOLIC_BP_Binned" = 'Crisis' THEN 1.0
                         ELSE 0.3
                     END +
                     CASE 
@@ -66,7 +66,7 @@ def run():
                 "Comorbidity_Count" / 4.0 AS C_Score,
 
                 -- Temporal Score (T): log1p(visits) / log1p(99th percentile: 213.0)
-                LEAST(LN(1.0 + TRY_CAST("TOPLAM_GELIS_SAYISI" AS DOUBLE)) / LN(1.0 + 213.0), 1.0) AS T_Score,
+                LEAST(LN(1.0 + TRY_CAST("TOTAL_VISIT_COUNT" AS DOUBLE)) / LN(1.0 + 213.0), 1.0) AS T_Score,
 
                 -- Medication Score (M): Prescriptions / 99th percentile: 126.0
                 LEAST(TRY_CAST("Total_Prescriptions" AS DOUBLE) / 126.0, 1.0) AS M_Score
@@ -95,22 +95,22 @@ def run():
     con.execute(query)
     print("DHS Computed and saved successfully.")
 
-    # Validation Queries
+    # validation queries
     print("\n" + "="*50)
     print("VALIDATION CHECKS")
     print("="*50)
 
-    # 1. Mean DHS by mortality
+    # 1. mean dhs by mortality
     print("\n1. Mean DHS by Mortality Label:")
     res_mortality = con.execute(f"SELECT mortality_label, AVG(DHS) AS Mean_DHS FROM read_parquet('{f_path}') GROUP BY mortality_label ORDER BY mortality_label").df()
     print(res_mortality.to_string(index=False))
 
-    # 2. Mean DHS by Risk Profile
+    # 2. mean dhs by risk profile
     print("\n2. Mean DHS per Risk Tier:")
     res_tier = con.execute(f"SELECT Risk_Profile, AVG(DHS) AS Mean_DHS, COUNT(*) AS Patient_Visits FROM read_parquet('{f_path}') GROUP BY Risk_Profile ORDER BY 2").df()
     print(res_tier.to_string(index=False))
 
-    # 3. Mean DHS by ICD10 Chapter
+    # 3. mean dhs by icd10 chapter
     print("\n3. Mean DHS per ICD10 Chapter:")
     res_icd10 = con.execute(f"SELECT ICD10_Chapter, AVG(DHS) AS Mean_DHS, COUNT(*) AS Visit_Count FROM read_parquet('{f_path}') GROUP BY ICD10_Chapter ORDER BY Mean_DHS DESC").df()
     print(res_icd10.to_string(index=False))
