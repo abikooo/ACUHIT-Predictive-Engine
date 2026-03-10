@@ -9,7 +9,7 @@ from sklearn.cluster import DBSCAN
 from sklearn.metrics import silhouette_score
 
 def run():
-    out_dir = r"c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/processed"
+    out_dir = r"./data/processed"
     f_path = os.path.join(out_dir, "final_feature_matrix.parquet")
 
     con = duckdb.connect()
@@ -17,7 +17,7 @@ def run():
 
     print("Extracting Stratified Sample (100K max) via DuckDB...")
     
-    # Use ORDER BY random() to ensure we strictly get up to 50K from each without scanning the whole 70M rows into memory
+    # use order by random() to ensure we strictly get up to 50k from each without scanning the whole 70m rows into memory
     query = f"""
     WITH alive AS (
         SELECT DHS, 
@@ -34,7 +34,7 @@ def run():
     )
     """
 
-    # Better approach for exact 50K is reservoir sampling 
+    # better approach for exact 50k is reservoir sampling 
     query = f"""
     SELECT DHS, 
            CAST(TANI_YASI AS DOUBLE) AS Age_At_Visit_Years, 
@@ -60,7 +60,7 @@ def run():
     df = con.execute(query).df()
     print(f"Sample loaded: {df.shape[0]} rows.")
 
-    # Drop any nulls just in case
+    # drop any nulls just in case
     df = df.dropna()
 
     features = ['DHS', 'Age_At_Visit_Years', 'Comorbidity_Count', 'Lab_Deviation_RMS', 'Total_Prescriptions']
@@ -84,7 +84,7 @@ def run():
     else:
         print("Silhouette Score: N/A (Only 1 cluster/noise found in sample)")
 
-    # Cluster Summaries
+    # cluster summaries
     print("\nComputing Cluster Summaries...")
     summary = df.groupby('Cluster').agg(
         Size=('DHS', 'count'),
@@ -94,12 +94,12 @@ def run():
         Mean_Comorbidity=('Comorbidity_Count', 'mean')
     ).reset_index()
 
-    # Label clusters (ignore noise -1)
+    # label clusters (ignore noise -1)
     valid_clusters = summary[summary['Cluster'] != -1].copy()
     
     if len(valid_clusters) > 0:
-        # Sort by combination of Mortality Rate and Mean DHS
-        # We'll normalize both to 0-1 and add them to find the "severity" rank
+        # sort by combination of mortality rate and mean dhs
+        # we'll normalize both to 0-1 and add them to find the "severity" rank
         norm_mort = valid_clusters['Mortality_Rate'] / (valid_clusters['Mortality_Rate'].max() + 1e-9)
         norm_dhs = valid_clusters['Mean_DHS'] / (valid_clusters['Mean_DHS'].max() + 1e-9)
         valid_clusters['Severity_Score'] = norm_mort + norm_dhs
@@ -113,22 +113,22 @@ def run():
             if i < len(labels):
                 assign_labels.append(labels[i])
             else:
-                assign_labels.append('Low') # Fallback if more than 4 clusters
+                assign_labels.append('Low') # fallback if more than 4 clusters
                 
         valid_clusters['Clinical_Tier'] = assign_labels
         
-        # Merge back
+        # merge back
         summary = summary.merge(valid_clusters[['Cluster', 'Clinical_Tier']], on='Cluster', how='left')
     
     summary['Clinical_Tier'] = summary['Clinical_Tier'].fillna('Unclassified (Noise)')
     summary = summary.sort_values(by='Mean_DHS', ascending=False)
     
-    csv_path = os.path.join(r"c:\Users\seiil\Desktop\ACUHIT_SCRATCH", "cluster_summary.csv")
+    csv_path = os.path.join(r"./", "cluster_summary.csv")
     summary.to_csv(csv_path, index=False)
     print(f"\nCluster summary saved to: {csv_path}")
     print(summary.to_string(index=False))
 
-    # Scatter Plot
+    # scatter plot
     print("\nGenerating Scatter Plot...")
     plt.figure(figsize=(10, 8))
     sns.scatterplot(
@@ -147,7 +147,7 @@ def run():
     plt.legend(title='DBSCAN Cluster', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     
-    plot_path = os.path.join(r"c:\Users\seiil\Desktop\ACUHIT_SCRATCH", "dbscan_clusters.png")
+    plot_path = os.path.join(r"./", "dbscan_clusters.png")
     plt.savefig(plot_path, dpi=300)
     plt.close()
     print(f"Scatter plot saved to: {plot_path}")

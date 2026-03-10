@@ -2,7 +2,7 @@ import pandas as pd
 import glob
 import os
 
-base_dir = r"c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/raw/ACUHIT 2"
+base_dir = r"./data/raw/ACUHIT 2"
 pattern = os.path.join(base_dir, "*", "*", "*.csv")
 all_files = glob.glob(pattern)
 
@@ -13,7 +13,7 @@ for f in all_files:
         categories[category] = []
     categories[category].append(f)
 
-output_file = r"c:/Users/seiil/Desktop/ACUHIT_SCRATCH/analysis_results.md"
+output_file = r"./analysis_results.md"
 
 with open(output_file, "w", encoding="utf-8") as out:
     out.write("# Data Analysis Results\n\n")
@@ -27,7 +27,7 @@ with open(output_file, "w", encoding="utf-8") as out:
         out.write(f"**Sample File**: `{os.path.basename(sample_file)}`\n\n")
         
         try:
-            # Try comma
+            # try comma
             df = pd.read_csv(sample_file, low_memory=False, nrows=1000, encoding_errors='replace')
             if len(df.columns) == 1 and ';' in df.columns[0]:
                 df = pd.read_csv(sample_file, sep=";", low_memory=False, nrows=1000, encoding_errors='replace')
