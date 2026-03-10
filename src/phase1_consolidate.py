@@ -3,26 +3,26 @@ import glob
 import os
 
 def consolidate_files():
-    base_dir = r"c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/raw/ACUHIT 2"
-    out_dir = r"c:/Users/seiil/Desktop/ACUHIT_SCRATCH/data/processed"
+    base_dir = r"./data/raw/ACUHIT 2"
+    out_dir = r"./data/processed"
     os.makedirs(out_dir, exist_ok=True)
 
-    anadata_cats = ['Cancer_Anadata', 'Check_Up_Anadata', 'Ex_Anadata']
+    demographics_data_cats = ['Cancer_Anadata', 'Check_Up_Anadata', 'Ex_Anadata']
     lab_cats = ['Cancer_Lab', 'Check_Up_Lab', 'Ex_Lab']
-    recete_cats = ['Cancer_Recete', 'Check_Up_Recete', 'Ex_Recete']
+    prescription_cats = ['Cancer_Recete', 'Check_Up_Recete', 'Ex_Recete']
 
     all_files = glob.glob(os.path.join(base_dir, "*", "*", "*.csv"))
     print(f"Total CSVs found: {len(all_files)}")
 
-    # Create destination directories
-    for p in ["master_anadata.parquet", "master_lab.parquet", "master_recete.parquet"]:
+    # create destination directories
+    for p in ["master_demographics_data.parquet", "master_lab.parquet", "master_prescription.parquet"]:
         os.makedirs(os.path.join(out_dir, p), exist_ok=True)
 
     print("\nProcessing files in stream mode...")
     
-    anadata_count = 0
+    demographics_data_count = 0
     lab_count = 0
-    recete_count = 0
+    prescription_count = 0
 
     for i, f in enumerate(all_files):
         cat = os.path.basename(os.path.dirname(f))
@@ -42,18 +42,18 @@ def consolidate_files():
                 
             fname = os.path.basename(f).replace(".csv", ".parquet")
 
-            if cat in anadata_cats:
-                dest = os.path.join(out_dir, "master_anadata.parquet", f"{anadata_count}_{fname}")
+            if cat in demographics_data_cats:
+                dest = os.path.join(out_dir, "master_demographics_data.parquet", f"{demographics_data_count}_{fname}")
                 df.to_parquet(dest)
-                anadata_count += 1
+                demographics_data_count += 1
             elif cat in lab_cats:
                 dest = os.path.join(out_dir, "master_lab.parquet", f"{lab_count}_{fname}")
                 df.to_parquet(dest)
                 lab_count += 1
-            elif cat in recete_cats:
-                dest = os.path.join(out_dir, "master_recete.parquet", f"{recete_count}_{fname}")
+            elif cat in prescription_cats:
+                dest = os.path.join(out_dir, "master_prescription.parquet", f"{prescription_count}_{fname}")
                 df.to_parquet(dest)
-                recete_count += 1
+                prescription_count += 1
             else:
                 print(f"Unknown category: {cat} for file {f}")
                 
@@ -63,7 +63,7 @@ def consolidate_files():
         except Exception as e:
             print(f"Error processing {f}: {e}")
 
-    print(f"\nPhase 1 Consolidation Complete! Wrote {anadata_count} anadata, {lab_count} lab, {recete_count} recete files.")
+    print(f"\nPhase 1 Consolidation Complete! Wrote {demographics_data_count} demographics_data, {lab_count} lab, {prescription_count} prescription files.")
 
     print("\nPhase 1 Consolidation Complete.")
 
